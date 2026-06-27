@@ -1,8 +1,25 @@
 import customtkinter as ctk
 
 from app.core.catalog import CATALOG
+from app.ui.tooltip import ToolTip
 
 _KEYS = [k for k, v in CATALOG.items() if v["tab"] == "homebrew"]
+
+# key → (icon, label_text, color, tooltip_text)
+_WARNINGS = {
+    "nand_flasher": (
+        "⚠️", "Solo hardmod", "#cc0000",
+        "Herramienta de backup/escritura NAND.\n"
+        "Solo funciona en consolas RGH/JTAG.\n"
+        "Escribir sin experiencia puede brickear la consola.",
+    ),
+    "xell_launch": (
+        "ℹ️", "Solo hardmod", "#444444",
+        "Xell es un bootloader para consolas RGH/JTAG.\n"
+        "No tiene función en consolas con softmod (ABadAvatar).\n"
+        "Ignorar si no tienes modificación de hardware.",
+    ),
+}
 
 
 class HomebrewTab(ctk.CTkFrame):
@@ -69,16 +86,45 @@ class HomebrewTab(ctk.CTkFrame):
             row, col = divmod(i, 2)
             is_auto = entry.get("type") == "auto"
             label = entry["name"] + ("  ✓" if is_auto else "")
-            cb = ctk.CTkCheckBox(
-                grid, text=label,
-                variable=self._vars[key],
-                command=self._on_change,
-                fg_color="#107C10", hover_color="#0d6a0d",
-            )
-            cb.grid(row=row, column=col, sticky="w", padx=8, pady=5)
-            cb.bind("<Enter>", lambda e, k=key: self._on_hover(k))
-            cb.bind("<Leave>", lambda e: self._on_leave())
-            self._toggleable.append(cb)
+            warn = _WARNINGS.get(key)
+
+            if warn:
+                # Horizontal frame: checkbox + warning badge
+                cell = ctk.CTkFrame(grid, fg_color="transparent")
+                cell.grid(row=row, column=col, sticky="w", padx=8, pady=5)
+
+                cb = ctk.CTkCheckBox(
+                    cell, text=label,
+                    variable=self._vars[key],
+                    command=self._on_change,
+                    fg_color="#107C10", hover_color="#0d6a0d",
+                )
+                cb.pack(side="left")
+                cb.bind("<Enter>", lambda e, k=key: self._on_hover(k))
+                cb.bind("<Leave>", lambda e: self._on_leave())
+                self._toggleable.append(cb)
+
+                icon, badge_text, badge_color, tip_text = warn
+                badge = ctk.CTkLabel(
+                    cell,
+                    text=f"{icon} {badge_text}",
+                    font=ctk.CTkFont(size=9, weight="bold"),
+                    text_color=badge_color,
+                    fg_color="transparent",
+                )
+                badge.pack(side="left", padx=(6, 0))
+                ToolTip(badge, tip_text, color=badge_color)
+            else:
+                cb = ctk.CTkCheckBox(
+                    grid, text=label,
+                    variable=self._vars[key],
+                    command=self._on_change,
+                    fg_color="#107C10", hover_color="#0d6a0d",
+                )
+                cb.grid(row=row, column=col, sticky="w", padx=8, pady=5)
+                cb.bind("<Enter>", lambda e, k=key: self._on_hover(k))
+                cb.bind("<Leave>", lambda e: self._on_leave())
+                self._toggleable.append(cb)
 
         ctk.CTkLabel(
             right, text="✓ = descarga automática disponible",

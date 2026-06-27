@@ -5,6 +5,9 @@ _HB_KEYS      = [k for k, v in CATALOG.items() if v["tab"] == "homebrew"]
 _STEALTH_KEYS = [k for k, v in CATALOG.items() if v["tab"] == "stealth"]
 _PLUGIN_KEYS  = [k for k, v in CATALOG.items() if v["tab"] == "plugins"]
 
+# Keys that only work on hardware-modded consoles (RGH/JTAG)
+HARDMOD_KEYS = {"xell_launch", "hvp2", "hacked_compat", "xefu_spoofer", "nand_flasher"}
+
 PROFILES = {
     "minimal": {
         "label":   "Mínima",
@@ -40,9 +43,8 @@ PROFILES = {
         "dashboards": {**{k: False for k in _DASH_KEYS}, "aurora": True},
         "homebrew":   {
             **{k: False for k in _HB_KEYS},
-            "xm360":       True,
-            "nxe2god":     True,
-            "nand_flasher": True,
+            "xm360":   True,
+            "nxe2god": True,
         },
         "stealth":    {k: False for k in _STEALTH_KEYS},
         "plugins":    {
@@ -52,8 +54,8 @@ PROFILES = {
         },
     },
     "full": {
-        "label":   "Completa",
-        "summary": "Aurora + Freestyle, todos los Homebrew y Plugins",
+        "label":   "Completa (Softmod Safe)",
+        "summary": "Everything safe for softmod",
         "install": {
             "method":          "abadavatar",
             "patch":           "xeunshackle",
@@ -69,9 +71,11 @@ PROFILES = {
             "aurora":    True,
             "freestyle": True,
         },
-        "homebrew":   {k: True  for k in _HB_KEYS},
-        "stealth":    {k: False for k in _STEALTH_KEYS},
-        "plugins":    {k: True  for k in _PLUGIN_KEYS},
+        # All homebrew EXCEPT hardmod-only items
+        "homebrew": {k: (k not in HARDMOD_KEYS) for k in _HB_KEYS},
+        "stealth":  {k: False for k in _STEALTH_KEYS},
+        # All plugins EXCEPT hardmod-only items
+        "plugins":  {k: (k not in HARDMOD_KEYS) for k in _PLUGIN_KEYS},
     },
 }
 

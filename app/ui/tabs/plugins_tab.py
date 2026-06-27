@@ -1,11 +1,34 @@
 import customtkinter as ctk
 
 from app.core.catalog import CATALOG
+from app.ui.tooltip import ToolTip
 
 _GROUPS = ["Plugins", "Personalización", "Retrocompatibilidad"]
 _KEYS_BY_GROUP = {
     g: [k for k, v in CATALOG.items() if v["tab"] == "plugins" and v.get("group") == g]
     for g in _GROUPS
+}
+
+# key → (icon, label_text, color, tooltip_text)
+_WARNINGS = {
+    "hacked_compat": (
+        "⚠️", "Solo hardmod", "#cc0000",
+        "Archivos de retrocompatibilidad modificados para\n"
+        "Xbox original. Requieren kernel parcheado disponible\n"
+        "solo en RGH/JTAG. En softmod no funcionarán.",
+    ),
+    "xefu_spoofer": (
+        "ℹ️", "Solo hardmod", "#444444",
+        "Spoofer de compatibilidad Xbox One. Requiere\n"
+        "acceso a nivel de kernel, solo disponible en\n"
+        "consolas con RGH/JTAG.",
+    ),
+    "hvp2": (
+        "⚠️", "Solo hardmod", "#cc0000",
+        "Hypervisor Patch 2 — parche a nivel de sistema\n"
+        "que requiere RGH/JTAG para funcionar.\n"
+        "No instalar en consolas softmod.",
+    ),
 }
 
 
@@ -86,17 +109,47 @@ class PluginsTab(ctk.CTkFrame):
 
             for key in _KEYS_BY_GROUP.get(group, []):
                 entry = CATALOG[key]
-                cb = ctk.CTkCheckBox(
-                    col, text=entry["name"],
-                    variable=self._vars[key],
-                    command=self._on_change,
-                    fg_color="#107C10", hover_color="#0d6a0d",
-                    font=ctk.CTkFont(size=11),
-                )
-                cb.pack(anchor="w", padx=12, pady=2)
-                cb.bind("<Enter>", lambda e, k=key, g=group: self._on_hover(k, g))
-                cb.bind("<Leave>", lambda e: self._on_leave())
-                self._toggleable.append(cb)
+                warn = _WARNINGS.get(key)
+
+                if warn:
+                    # Horizontal cell: checkbox + warning badge
+                    cell = ctk.CTkFrame(col, fg_color="transparent")
+                    cell.pack(anchor="w", padx=8, pady=2)
+
+                    cb = ctk.CTkCheckBox(
+                        cell, text=entry["name"],
+                        variable=self._vars[key],
+                        command=self._on_change,
+                        fg_color="#107C10", hover_color="#0d6a0d",
+                        font=ctk.CTkFont(size=11),
+                    )
+                    cb.pack(side="left")
+                    cb.bind("<Enter>", lambda e, k=key, g=group: self._on_hover(k, g))
+                    cb.bind("<Leave>", lambda e: self._on_leave())
+                    self._toggleable.append(cb)
+
+                    icon, badge_text, badge_color, tip_text = warn
+                    badge = ctk.CTkLabel(
+                        cell,
+                        text=f"{icon} {badge_text}",
+                        font=ctk.CTkFont(size=9, weight="bold"),
+                        text_color=badge_color,
+                        fg_color="transparent",
+                    )
+                    badge.pack(side="left", padx=(5, 0))
+                    ToolTip(badge, tip_text, color=badge_color)
+                else:
+                    cb = ctk.CTkCheckBox(
+                        col, text=entry["name"],
+                        variable=self._vars[key],
+                        command=self._on_change,
+                        fg_color="#107C10", hover_color="#0d6a0d",
+                        font=ctk.CTkFont(size=11),
+                    )
+                    cb.pack(anchor="w", padx=12, pady=2)
+                    cb.bind("<Enter>", lambda e, k=key, g=group: self._on_hover(k, g))
+                    cb.bind("<Leave>", lambda e: self._on_leave())
+                    self._toggleable.append(cb)
 
             ctk.CTkFrame(col, height=8, fg_color="transparent").pack()
 

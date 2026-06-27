@@ -1,7 +1,7 @@
+import contextlib
 import os
 import platform
 import subprocess
-import tempfile
 import threading
 import tkinter as tk
 import webbrowser
@@ -11,8 +11,9 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.core.catalog import CATALOG, METHOD_DL_MAP
+from app.ui.quick_profiles import HARDMOD_KEYS
 from app.core.config import (
-    APP_NAME, APP_VERSION, GITHUB_REPO, DISCORD_URL, LAUNCH_INI_CONTENT,
+    APP_NAME, APP_VERSION, GITHUB_REPO, DISCORD_URL, TEMP_DIR,
 )
 from app.core.device_manager import DeviceManager
 from app.core.downloader import Downloader
@@ -109,6 +110,7 @@ class MainWindow(ctk.CTk):
 
         self._system = platform.system()
         self._device_manager = DeviceManager()
+        self.device_manager  = self._device_manager   # public alias for child widgets
         self._downloader = Downloader()
         self._installer = Installer()
         self._devices = []
@@ -406,6 +408,66 @@ class MainWindow(ctk.CTk):
     # Install flow                                                         #
     # ------------------------------------------------------------------ #
 
+    def _show_hardmod_warning(self, item_names: list) -> bool:
+        """Show modal warning for hardmod-only items. Returns True to keep, False to remove."""
+        result = [True]
+        win = ctk.CTkToplevel(self)
+        win.title("⚠️ Hardmod-Only Options Detected")
+        win.geometry("480x320")
+        win.resizable(False, False)
+        win.grab_set()
+
+        ctk.CTkLabel(
+            win,
+            text="⚠️  Hardmod-Only Options Detected",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#ff6b6b",
+        ).pack(pady=(20, 8))
+
+        bullet_list = "\n".join(f"  •  {name}" for name in item_names)
+        ctk.CTkLabel(
+            win,
+            text=(
+                "The following selected options only work on hardware-modded\n"
+                "consoles (RGH/JTAG) and may cause freezes on softmod\n"
+                "(ABadAvatar/BadUpdate) consoles:\n\n"
+                f"{bullet_list}\n\n"
+                "Are you sure you want to include these?\n"
+                'Select NO to remove them automatically.'
+            ),
+            font=ctk.CTkFont(size=11),
+            text_color="#cccccc",
+            justify="left",
+        ).pack(padx=24, pady=(0, 16))
+
+        btn_row = ctk.CTkFrame(win, fg_color="transparent")
+        btn_row.pack()
+
+        def _keep():
+            result[0] = True
+            win.destroy()
+
+        def _remove():
+            result[0] = False
+            win.destroy()
+
+        ctk.CTkButton(
+            btn_row, text="Yes, I have RGH/JTAG",
+            command=_keep,
+            fg_color="#1a3a5c", hover_color="#2a4a6c",
+            width=180,
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            btn_row, text="No, remove them",
+            command=_remove,
+            fg_color="#3a1010", hover_color="#5a1818",
+            width=160,
+        ).pack(side="left")
+
+        self.wait_window(win)
+        return result[0]
+
     def _start_install(self):
         device = self._get_selected_device()
         if not device:
@@ -417,6 +479,26 @@ class MainWindow(ctk.CTk):
         homebrew_opts  = self.homebrew_tab.get_options()
         stealth_opts   = self.stealth_tab.get_options()
         plugin_opts    = self.plugins_tab.get_options()
+
+        # ── Hardmod-only warning ──────────────────────────────────────
+        selected_hardmod = {
+            k: CATALOG[k]["name"]
+            for opts in (homebrew_opts, plugin_opts)
+            for k, v in opts.items()
+            if v and k in HARDMOD_KEYS
+        }
+        hardmod_skipped_count = 0
+        if selected_hardmod:
+            keep = self._show_hardmod_warning(list(selected_hardmod.values()))
+            if not keep:
+                for k in selected_hardmod:
+                    if k in homebrew_opts:
+                        homebrew_opts[k] = False
+                    if k in plugin_opts:
+                        plugin_opts[k] = False
+                self.homebrew_tab.set_selections(homebrew_opts)
+                self.plugins_tab.set_selections(plugin_opts)
+                hardmod_skipped_count = len(selected_hardmod)
 
         # Build confirmation summary
         method_key = install_opts["method"]
@@ -458,11 +540,12 @@ class MainWindow(ctk.CTk):
         self._log("Iniciando instalación…")
 
         all_opts = {
-            "install":    install_opts,
-            "dashboards": dashboard_opts,
-            "homebrew":   homebrew_opts,
-            "stealth":    stealth_opts,
-            "plugins":    plugin_opts,
+            "install":              install_opts,
+            "dashboards":           dashboard_opts,
+            "homebrew":             homebrew_opts,
+            "stealth":              stealth_opts,
+            "plugins":              plugin_opts,
+            "hardmod_skipped":      hardmod_skipped_count,
         }
         threading.Thread(
             target=self._install_worker,
@@ -521,12 +604,22 @@ class MainWindow(ctk.CTk):
             prog(0.15, "Descargando…")
 
             # ── Step 2: Download (15 → 65%) ──────────────────────────
+            # Core: exploit + payload
             keys_to_dl = [dl_method_key]
             if method_key != "badupdate":
                 keys_to_dl.append(patch_key)
-            if all_opts["homebrew"].get("nand_flasher"):
-                keys_to_dl.append("nand_flasher")
+            # Auto-download any selected catalog item that has a download URL
+            for _tab in ("dashboards", "homebrew", "stealth", "plugins"):
+                for _k, _sel in all_opts[_tab].items():
+                    if not _sel or _k in keys_to_dl:
+                        continue
+                    _e = CATALOG.get(_k, {})
+                    if _e.get("type") == "auto" and (
+                        _e.get("api_url") or _e.get("direct_url")
+                    ):
+                        keys_to_dl.append(_k)
 
+            log(f"[DEBUG] keys_to_dl ({len(keys_to_dl)}): {keys_to_dl}")
             n = len(keys_to_dl)
             src_prog = [0.0] * n
             downloaded = {}
@@ -545,41 +638,62 @@ class MainWindow(ctk.CTk):
                     )
                 return cb
 
-            with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(TEMP_DIR, exist_ok=True)
+            with contextlib.nullcontext(TEMP_DIR) as tmp:
                 for i, key in enumerate(keys_to_dl):
                     entry = CATALOG.get(key)
                     if not entry:
                         continue
                     name = entry["name"]
-                    log(f"Descargando {name}…")
+
+                    dest = os.path.join(tmp, f"{key}.zip")
+
+                    # ── Cache hit: skip download ───────────────────────
+                    if os.path.exists(dest) and os.path.getsize(dest) > 0:
+                        size_mb = os.path.getsize(dest) / 1_048_576
+                        log(f"⚡ {name} — usando caché local ({size_mb:.1f} MB)")
+                        src_prog[i] = 1.0
+                        downloaded[key] = dest
+                        self.after(0, lambda: self._speed_lbl.configure(text=""))
+                        continue
+
+                    # ── Cache miss: resolve URL then download ──────────
+                    log(f"⬇ {name} — descargando…")
 
                     url = None
-                    if "api_url" in entry:
-                        url = self._downloader.get_latest_release_url(
-                            entry["api_url"], entry.get("asset_pattern", ".zip")
-                        )
-                        if not url:
-                            url = entry.get("fallback_url")
-                        if url:
-                            log("  → Release más reciente encontrado")
-                        else:
-                            log("  → Sin URL disponible", "warning")
-                    elif "direct_url" in entry:
+                    if "direct_url" in entry:
                         url = entry["direct_url"]
+                    elif "api_url" in entry:
+                        api_url = entry["api_url"]
+                        if "releases/download" in api_url:
+                            url = api_url
+                        else:
+                            url = self._downloader.get_latest_release_url(
+                                api_url, entry.get("asset_pattern", ".zip")
+                            )
+                            if not url:
+                                url = entry.get("fallback_url")
+                        if not url:
+                            log("  → Sin URL disponible", "warning")
 
                     if not url:
                         log(f"  Saltando {name} — sin URL", "warning")
                         continue
 
-                    dest = os.path.join(tmp, f"{key}.zip")
                     ok = self._downloader.download_file(url, dest, make_cb(i, name))
                     if ok:
                         src_prog[i] = 1.0
+                        size_mb = os.path.getsize(dest) / 1_048_576
                         self.after(0, lambda: self._speed_lbl.configure(text=""))
-                        log(f"  {name} descargado", "success")
+                        log(f"✅ {name} — descargado y guardado en caché ({size_mb:.1f} MB)",
+                            "success")
                         downloaded[key] = dest
+                        log(f"[DEBUG] ✓ {key} → {dest}")
                     else:
                         log(f"  Error descargando {name}", "error")
+                        log(f"[DEBUG] ✗ {key} falló (url={url})")
+
+                log(f"[DEBUG] downloaded keys: {list(downloaded.keys())}")
 
                 if not os.path.exists(usb_path):
                     raise RuntimeError("USB desconectado durante la descarga")
@@ -594,20 +708,9 @@ class MainWindow(ctk.CTk):
 
                 # ── Step 3: Install exploit + payload (65 → 85%) ─────
                 installer_opts = {
-                    "exploit":      dl_method_key,
-                    "payload":      patch_key if method_key != "badupdate" else None,
-                    "create_folders": True,
-                    "launch_ini":   False,
-                    "nand_flasher": bool(
-                        all_opts["homebrew"].get("nand_flasher")
-                        and "nand_flasher" in downloaded
-                    ),
+                    "exploit": dl_method_key,
+                    "payload": patch_key if method_key != "badupdate" else None,
                 }
-
-                # downloaded dict uses dl_method_key; installer expects "exploit" key
-                dl_for_installer = {**downloaded}
-                if patch_key not in dl_for_installer:
-                    dl_for_installer[patch_key] = None
 
                 log("Instalando archivos del exploit en USB…")
                 success, checklist = self._installer.install(
@@ -623,7 +726,14 @@ class MainWindow(ctk.CTk):
 
                 # ── Step 4: Create folders + extras (85 → 100%) ──────
                 log("Creando carpetas y archivos adicionales…")
-                self._generate_extras(usb_path, all_opts, install_opts, log)
+                log(f"[DEBUG] Pasando {len(downloaded)} archivos a _generate_extras: {list(downloaded.keys())}")
+                self._generate_extras(usb_path, all_opts, install_opts, log, downloaded)
+
+                # ── Step 5: Filesystem verification ──────────────────
+                v_results  = self._verify_installation(usb_path, all_opts, install_opts)
+                v_total    = len(v_results)
+                v_ok       = sum(1 for r in v_results if r["ok"])
+                v_missing  = [r for r in v_results if not r["ok"]]
 
                 # ── Done ─────────────────────────────────────────────
                 prog(1.0, "¡Completado!")
@@ -674,6 +784,29 @@ class MainWindow(ctk.CTk):
                         )
                         log(f"  {entry.get('name', key)}: {hint}")
 
+                skipped_hm = all_opts.get("hardmod_skipped", 0)
+                skip_suffix = (
+                    f" ({skipped_hm} hardmod-only ignorado{'s' if skipped_hm > 1 else ''})"
+                    if skipped_hm else ""
+                )
+                log("")
+                log("── VERIFICACIÓN DE INSTALACIÓN ──")
+                log(f"Seleccionados: {v_total} items{skip_suffix}")
+                log(f"Instalados:    {v_ok} items")
+                if not v_missing:
+                    log(
+                        f"✅ Todas las instalaciones completadas ({v_ok}/{v_total})",
+                        "success",
+                    )
+                else:
+                    log(
+                        f"⚠️ ADVERTENCIA: Se esperaban {v_total} items "
+                        f"pero solo se instalaron {v_ok}.",
+                        "warning",
+                    )
+                    for r in v_missing:
+                        log(f"  ❌ {r['label']}", "error")
+
                 log("")
                 log("── Checklist ──")
                 for item in checklist:
@@ -704,51 +837,126 @@ class MainWindow(ctk.CTk):
             self.after(0, _on_error)
 
     # ------------------------------------------------------------------ #
-    # Generate extras (placeholder folders + launch.ini)                  #
+    # Installation verification                                           #
     # ------------------------------------------------------------------ #
 
-    def _generate_extras(self, usb_path: str, all_opts: dict, install_opts: dict, log):
-        custom_ini = install_opts.get("custom_launch_ini")
+    def _verify_installation(
+        self, usb_path: str, all_opts: dict, install_opts: dict
+    ) -> list:
+        """
+        Returns list of dicts: {label, path, ok, core}
+        Checks every file/folder that should exist after a complete install.
+        """
+        results = []
 
-        # Base folders
-        for folder in ("Apps", "Games", "Emulators", "Plugins", "Compatibility"):
-            os.makedirs(os.path.join(usb_path, folder), exist_ok=True)
+        def chk(label, path, is_file=False, core=True):
+            ok = os.path.isfile(path) if is_file else os.path.isdir(path)
+            results.append({"label": label, "path": path, "ok": ok, "core": core})
 
-        # launch.ini
-        ini_content = custom_ini if custom_ini else LAUNCH_INI_CONTENT
-        with open(os.path.join(usb_path, "launch.ini"), "w", encoding="utf-8") as f:
-            f.write(ini_content)
-        log("  launch.ini generado")
+        # ── Core: exploit ────────────────────────────────────────────────
+        chk("BadUpdatePayload/",
+            os.path.join(usb_path, "BadUpdatePayload"))
+        chk("Content/",
+            os.path.join(usb_path, "Content"))
 
-        # Placeholder folders for manual items from all tabs
+        method_key = install_opts.get("method", "abadavatar")
+        if method_key != "badupdate":
+            chk("BadUpdatePayload/default.xex",
+                os.path.join(usb_path, "BadUpdatePayload", "default.xex"),
+                is_file=True)
+
+        # ── Selected catalog items from all tabs ──────────────────────────
         for tab_key in ("dashboards", "homebrew", "stealth", "plugins"):
             for k, selected in all_opts[tab_key].items():
                 if not selected:
                     continue
                 entry = CATALOG.get(k)
-                if not entry or entry.get("type") != "manual":
+                if not entry:
+                    continue
+                dest_rel = entry.get("dest", f"Homebrew/{k}")
+                dest = os.path.join(usb_path, *dest_rel.split("/")) if dest_rel else usb_path
+                chk(f"{entry['name']}  →  {dest_rel or 'raíz'}/", dest, core=False)
+
+        return results
+
+    # ------------------------------------------------------------------ #
+    # Generate extras (placeholder folders + launch.ini)                  #
+    # ------------------------------------------------------------------ #
+
+    def _generate_extras(
+        self,
+        usb_path: str,
+        all_opts: dict,
+        install_opts: dict,
+        log,
+        downloaded: dict = None,
+    ):
+        # Base folders matching the real USB structure
+        for folder in (
+            "Dashboards", "Homebrew", "Plugins",
+            "Stealth Networks", "Backwards Compatibility",
+            "Customization", "FakeAnim", "FakeAnim Boot Animations",
+        ):
+            os.makedirs(os.path.join(usb_path, folder), exist_ok=True)
+
+        # launch.ini — only writes if file doesn't already exist on USB
+        Installer.generate_launch_ini(usb_path, log)
+
+        # Install / stub all selected catalog items
+        downloaded = downloaded or {}
+        log(f"[DEBUG] _generate_extras recibió downloaded: {list(downloaded.keys())}")
+        for tab_key in ("dashboards", "homebrew", "stealth", "plugins"):
+            for k, selected in all_opts[tab_key].items():
+                if not selected:
+                    continue
+                entry = CATALOG.get(k)
+                if not entry:
                     continue
 
-                dest_rel = entry.get("dest", f"Apps/{k}")
-                dest = os.path.join(usb_path, *dest_rel.split("/"))
-                os.makedirs(dest, exist_ok=True)
+                item_type = entry.get("type", "manual")
+                dest_rel  = entry.get("dest", f"Homebrew/{k}")
 
-                readme = os.path.join(dest, "LEER.txt")
-                url = entry.get("url", "")
-                desc = entry.get("desc", "")
-                with open(readme, "w", encoding="utf-8") as f:
-                    f.write(f"{entry['name']}\n")
-                    f.write("=" * 50 + "\n\n")
-                    f.write(f"Descripción:\n  {desc}\n\n")
-                    if url:
-                        f.write(f"Descarga:\n  {url}\n\n")
-                    f.write("Instrucciones:\n")
-                    f.write("  1. Descarga el archivo desde el link de arriba\n")
-                    f.write("  2. Extrae el contenido en esta misma carpeta\n")
-                    f.write(f"  3. Estructura final: {dest_rel}/\n")
-                    f.write(f"  4. Autor: {entry.get('author', 'Unknown')}\n")
+                zip_path = downloaded.get(k)
+                log(f"[DEBUG]   {k}: type={item_type}, dest={dest_rel!r}, en downloaded={k in downloaded}, zip_exists={bool(zip_path and os.path.exists(zip_path))}")
+                if item_type == "auto" and zip_path and os.path.exists(zip_path):
+                    try:
+                        Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
+                        log(f"  ✓ {entry['name']} → {dest_rel or 'raíz'}/", "success")
+                    except Exception as exc:
+                        log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
+                        dest = os.path.join(usb_path, *dest_rel.split("/")) if dest_rel else usb_path
+                        os.makedirs(dest, exist_ok=True)
+                        self._write_leer_txt(dest, entry, dest_rel)
+                        log(f"  ℹ️  {entry['name']} → carpeta creada (instalación manual)")
+                else:
+                    dest = os.path.join(usb_path, *dest_rel.split("/")) if dest_rel else usb_path
+                    os.makedirs(dest, exist_ok=True)
+                    self._write_leer_txt(dest, entry, dest_rel)
+                    if item_type == "auto":
+                        log(f"  ⚠ {entry['name']} no descargado → instrucciones manuales",
+                            "warning")
+                    else:
+                        log(f"  ℹ️  {entry['name']} → carpeta creada (instalación manual)")
 
-                log(f"  Carpeta creada: {dest_rel}/")
+    def _extract_zip_to(self, zip_path: str, dest_dir: str, log):
+        """Deprecated shim — delegates to Installer.extract_zip_to."""
+        Installer.extract_zip_to(zip_path, dest_dir, "", log)
+
+    def _write_leer_txt(self, dest: str, entry: dict, dest_rel: str):
+        readme = os.path.join(dest, "LEER.txt")
+        url  = entry.get("url", "")
+        desc = entry.get("desc", "")
+        with open(readme, "w", encoding="utf-8") as f:
+            f.write(f"{entry['name']}\n")
+            f.write("=" * 50 + "\n\n")
+            f.write(f"Descripción:\n  {desc}\n\n")
+            if url:
+                f.write(f"Descarga:\n  {url}\n\n")
+            f.write("Instrucciones:\n")
+            f.write("  1. Descarga el archivo desde el link de arriba\n")
+            f.write("  2. Extrae el contenido en esta misma carpeta\n")
+            f.write(f"  3. Estructura final: {dest_rel}/\n")
+            f.write(f"  4. Autor: {entry.get('author', 'Unknown')}\n")
 
     # ------------------------------------------------------------------ #
     # Helpers                                                              #

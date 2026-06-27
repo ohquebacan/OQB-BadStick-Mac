@@ -17,6 +17,45 @@ class DeviceManager:
             return self._list_usb_linux()
         return []
 
+    # Names that are never real USB drives
+    _NAME_BLOCKLIST = {
+        "oqb badstick mac",
+        "macintosh hd",
+        "time machine",
+    }
+    _NAME_BLOCKLIST_PREFIXES = ("disk image",)
+    _MIN_USB_BYTES = 256 * 1024 * 1024   # 256 MB
+
+    def _is_fake_volume(self, name: str, mount_point: str, size_bytes: int) -> bool:
+        """Return True if this entry should be excluded from the USB list."""
+        name_l = (name or "").lower()
+        # Known fake / system names
+        if name_l in self._NAME_BLOCKLIST:
+            return True
+        if any(name_l.startswith(p) for p in self._NAME_BLOCKLIST_PREFIXES):
+            return True
+        # Mount point inside a .app bundle (PyInstaller virtual disk)
+        if ".app" in (mount_point or ""):
+            return True
+        # Too small to be a real USB drive
+        if size_bytes and size_bytes < self._MIN_USB_BYTES:
+            return True
+        return False
+
+    def _get_bus_protocol_macos(self, identifier: str) -> str:
+        """Return the BusProtocol string from diskutil info, or '' on error."""
+        try:
+            result = subprocess.run(
+                ["diskutil", "info", "-plist", f"/dev/{identifier}"],
+                capture_output=True, timeout=8,
+            )
+            if result.returncode == 0:
+                info = plistlib.loads(result.stdout)
+                return info.get("BusProtocol", "") or ""
+        except Exception:
+            pass
+        return ""
+
     def _list_usb_macos(self) -> list:
         try:
             # 'external' limits output to removable/external disks only
@@ -64,6 +103,17 @@ class DeviceManager:
                             name = fallback.get("name", "")
                         if not mount_point:
                             mount_point = fallback.get("mount_point", "")
+
+                # ── Filter: reject fake / system volumes ──────────────────
+                if self._is_fake_volume(name, mount_point, size_bytes):
+                    continue
+
+                # ── Filter: verify USB bus protocol ───────────────────────
+                protocol = self._get_bus_protocol_macos(identifier).lower()
+                if protocol and "usb" not in protocol and "disk image" not in protocol:
+                    # Non-USB protocol (e.g. Thunderbolt, PCIe) — skip
+                    # Allow empty protocol through since some USB hubs omit it
+                    continue
 
                 devices.append({
                     "name": name or identifier,

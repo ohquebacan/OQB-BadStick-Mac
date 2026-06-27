@@ -1,7 +1,10 @@
+import os
+
 APP_NAME = "OQB BadStick Mac"
 APP_VERSION = "1.0.0"
 APP_AUTHOR = "OQB / ohquebacan.com"
 GITHUB_REPO = "ohquebacan/OQB-BadStick-Mac"
+TEMP_DIR = os.path.expanduser("~/OQB-BadStick-Mac/temp")
 DISCORD_URL = "https://discord.gg/HzUP3shMgQ"
 
 SOURCES = {
@@ -71,11 +74,88 @@ EXPLOIT_INFO = {
 
 PAYLOAD_INFO = "XeUnshackle es más compatible con plugins y stealth servers"
 
-LAUNCH_INI_CONTENT = r"""[Launch]
-Default = Usb:\Apps\Aurora\Aurora.xex
+LAUNCH_INI_CONTENT = r"""[Paths]
+BUT_A =
+BUT_B =
+BUT_X = Usb:\Content\0000000000000000\C0DE9999\00080000\C0DE99990F586558
+BUT_Y = Sfc:\dash.xex
+Start =
+Back =
+LBump =
+RThumb =
+LThumb =
+
+Default =
+Guide =
+Power =
+Configapp =
+Fakeanim =
+Dumpfile =
 
 [Plugins]
-; plugin1 = Usb:\Plugins\mi_plugin.xex
+plugin1 =
+plugin2 =
+plugin3 =
+plugin4 =
+plugin5 =
+
+[Externals]
+ftpserv = false
+ftpport = 21
+updserv = false
+calaunch = false
+fahrenheit = false
 
 [Settings]
+nxemini = true
+pingpatch = true
+contpatch = false
+xblapatch = false
+licpatch = false
+fatalfreeze = false
+fatalreboot = false
+safereboot = true
+regionspoof = false
+region = 0x7fff
+dvdexitdash = false
+xblaexitdash = false
+nosysexit = false
+nohud = false
+noupdater = true
+debugout = true
+exchandler = true
+liveblock = true
+livestrong = true
+remotenxe = false
+hddalive = false
+hddtimer = 210
+signnotice = false
+autoshut = false
+autooff = false
+xhttp = false
+tempbcast = false
+temptime = 10
+tempport = 7030
+sockpatch = true
+passlaunch = false
+fakelive = false
+nonetstore = true
+shuttemps = false
+devprof = false
+devlink = false
+autoswap = false
+nohealth = true
+nooobe = true
+autofake = false
+autofake0 = 0x00000000
+autofake1 = 0x00000000
+autofake2 = 0x00000000
+autofake3 = 0x00000000
+autofake4 = 0x00000000
+autofake5 = 0x00000000
+autofake6 = 0x00000000
+autofake7 = 0x00000000
+autofake8 = 0x00000000
+autofake9 = 0x00000000
+autocont = false
 """

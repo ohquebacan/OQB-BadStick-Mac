@@ -13,18 +13,26 @@ HEADERS = {
 
 class Downloader:
     def get_latest_release_url(self, api_url: str, asset_pattern: str) -> str:
+        print(f"[DEBUG] get_latest_release_url api={api_url} pattern={asset_pattern}")
         try:
             response = requests.get(api_url, headers=HEADERS, timeout=15)
+            print(f"[DEBUG]   → HTTP {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
+                assets = [a["name"] for a in data.get("assets", [])]
+                print(f"[DEBUG]   → assets disponibles: {assets}")
                 for asset in data.get("assets", []):
                     if asset["name"].endswith(asset_pattern):
+                        print(f"[DEBUG]   → match: {asset['browser_download_url']}")
                         return asset["browser_download_url"]
+                print(f"[DEBUG]   → ningún asset termina en '{asset_pattern}'")
             return None
-        except Exception:
+        except Exception as exc:
+            print(f"[DEBUG]   → excepción: {exc}")
             return None
 
     def download_file(self, url: str, dest_path: str, progress_callback) -> bool:
+        print(f"[DEBUG] download_file url={url}")
         """
         progress_callback(downloaded_bytes, total_bytes, speed_bps)
         speed_bps is a rolling average over the last second of data.
@@ -65,6 +73,8 @@ class Downloader:
 
                         progress_callback(downloaded, total, speed_bps)
 
+            print(f"[DEBUG]   → download_file OK ({downloaded} bytes)")
             return True
-        except Exception:
+        except Exception as exc:
+            print(f"[DEBUG]   → download_file EXCEPCIÓN: {exc}")
             return False

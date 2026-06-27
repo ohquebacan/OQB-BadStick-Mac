@@ -10,19 +10,19 @@ _PROFILE_DEFS = [
     (
         "minimal",
         "⚡  MÍNIMA",
-        "Solo lo esencial\npara arrancar",
+        "Just enough to\nboot homebrew",
         "#252525", "#333333", "#505050", "#aaaaaa",
     ),
     (
         "recommended",
         "✅  RECOMENDADA",
-        "Lo que usa\nla mayoría",
+        "Best for most\nsoftmod consoles",
         "#0a4a0a", "#107C10", "#0d6a0d", "#4CAF50",
     ),
     (
         "full",
         "🚀  COMPLETA",
-        "Todo lo disponible\nautomático",
+        "All softmod-safe\noptions included",
         "#0d1d35", "#1a3a5c", "#1a3060", "#4a90d9",
     ),
 ]
@@ -141,6 +141,14 @@ class InstallTab(ctk.CTkFrame):
             right, text="Configuración personalizada",
             font=ctk.CTkFont(size=9), text_color="#555555",
         )
+
+        # ── Softmod-safe notice ───────────────────────────────────────
+        ctk.CTkLabel(
+            right,
+            text="✅  All profiles are softmod safe by default — "
+                 "hardmod-only options are marked with ⚠️",
+            font=ctk.CTkFont(size=11), text_color="#4CAF50",
+        ).pack(anchor="w", pady=(4, 0))
 
         # ── Separator ─────────────────────────────────────────────────
         ctk.CTkFrame(right, fg_color="#2a2a2a", height=1).pack(
