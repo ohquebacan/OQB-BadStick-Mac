@@ -43,7 +43,7 @@ _CONFIG_LABELS = [
     ("skip_xexmenu",    "Omitir XeXMenu"),
     ("skip_rock_band",  "Omitir Rock Band"),
     ("skip_main_files", "Omitir archivos principales"),
-    ("skip_format",     "Omitir formateo  (USB en FAT32)"),
+    ("skip_format",     "⚡ Actualizar USB existente"),
     ("install_all",     "Instalar todos los archivos"),
     ("exit_when_done",  "Salir al terminar"),
 ]
@@ -130,7 +130,7 @@ class InstallTab(ctk.CTkFrame):
                 border_width=1,
                 corner_radius=8,
                 width=190,
-                height=72,
+                height=62,
                 font=ctk.CTkFont(size=10, weight="bold"),
                 text_color="#dddddd",
             )
@@ -152,7 +152,7 @@ class InstallTab(ctk.CTkFrame):
 
         # ── Separator ─────────────────────────────────────────────────
         ctk.CTkFrame(right, fg_color="#2a2a2a", height=1).pack(
-            fill="x", pady=(6, 8)
+            fill="x", pady=(4, 6)
         )
 
         # ── 4–6. Método de Instalación ────────────────────────────────
@@ -181,7 +181,7 @@ class InstallTab(ctk.CTkFrame):
 
         # ── Separator ─────────────────────────────────────────────────
         ctk.CTkFrame(right, fg_color="#2a2a2a", height=1).pack(
-            fill="x", pady=(8, 8)
+            fill="x", pady=(5, 6)
         )
 
         # ── 8–10. Parches ─────────────────────────────────────────────
@@ -215,7 +215,7 @@ class InstallTab(ctk.CTkFrame):
 
         # ── Separator ─────────────────────────────────────────────────
         ctk.CTkFrame(right, fg_color="#2a2a2a", height=1).pack(
-            fill="x", pady=(8, 8)
+            fill="x", pady=(5, 6)
         )
 
         # ── 12–13. Configuración ──────────────────────────────────────
@@ -228,11 +228,19 @@ class InstallTab(ctk.CTkFrame):
         cfg_frame.pack(anchor="w")
         cfg_frame.grid_columnconfigure((0, 1), weight=0)
 
+        self._skip_format_note = ctk.CTkLabel(
+            right, text="",
+            font=ctk.CTkFont(size=10), text_color="#aaa855",
+        )
+        self._skip_format_note.pack(anchor="w")
+
         for i, (key, lbl) in enumerate(_CONFIG_LABELS):
             row, col = divmod(i, 2)
+            cmd = (self._on_skip_format_change if key == "skip_format"
+                   else self._on_change)
             cb = ctk.CTkCheckBox(
                 cfg_frame, text=lbl, variable=self._config_vars[key],
-                command=self._on_change,
+                command=cmd,
                 fg_color="#107C10", hover_color="#0d6a0d",
                 font=ctk.CTkFont(size=11),
             )
@@ -268,6 +276,15 @@ class InstallTab(ctk.CTkFrame):
             self._patch_note.pack(anchor="w", pady=(2, 0))
         else:
             self._patch_note.pack_forget()
+
+    def _on_skip_format_change(self):
+        if self._config_vars["skip_format"].get():
+            self._skip_format_note.configure(
+                text="ℹ️  Mantiene archivos existentes — solo añade/actualiza lo seleccionado"
+            )
+        else:
+            self._skip_format_note.configure(text="")
+        self._on_change()
 
     def _on_method_change(self):
         self._update_method_ui()

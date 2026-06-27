@@ -105,7 +105,7 @@ class MainWindow(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
 
         self.title(f"{APP_NAME} v{APP_VERSION}")
-        self.geometry("980x680")
+        self.geometry("980x760")
         self.resizable(False, False)
 
         self._system = platform.system()
@@ -575,12 +575,16 @@ class MainWindow(ctk.CTk):
         try:
             # ── Step 1: Format / verify USB (0 → 15%) ────────────────
             if skip_format:
-                log("Omitiendo formateo — buscando punto de montaje…")
+                log("⚡ Saltando formateo — actualizando USB existente")
+                log("📁 Archivos existentes se mantienen")
+                log("✏️  Solo items seleccionados se instalan/actualizan")
                 prog(0.05, "Verificando USB…")
                 usb_path = self._device_manager.get_mount_point(device["identifier"])
                 if not usb_path or not os.path.exists(usb_path):
                     raise RuntimeError(
-                        "USB no montado. Desmarca 'Omitir formateo' o monta el USB."
+                        "USB no montado.\n"
+                        "Conecta el USB formateado y desmarca '⚡ Actualizar USB existente'\n"
+                        "si quieres hacer una instalación limpia."
                     )
                 log(f"USB encontrado en {usb_path}", "success")
             else:
