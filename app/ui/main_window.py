@@ -622,6 +622,12 @@ class MainWindow(ctk.CTk):
                         _e.get("api_url") or _e.get("direct_url")
                     ):
                         keys_to_dl.append(_k)
+            # Install-tab baseline items: XeXMenu and Rock Band (unless skipped)
+            for _k, _skip in (("xexmenu", "skip_xexmenu"), ("rock_band", "skip_rock_band")):
+                if not install_opts.get(_skip, False) and _k not in keys_to_dl:
+                    _e = CATALOG.get(_k, {})
+                    if _e.get("type") == "auto" and _e.get("direct_url"):
+                        keys_to_dl.append(_k)
 
             log(f"[DEBUG] keys_to_dl ({len(keys_to_dl)}): {keys_to_dl}")
             n = len(keys_to_dl)
@@ -897,7 +903,7 @@ class MainWindow(ctk.CTk):
     ):
         # Base folders matching the real USB structure
         for folder in (
-            "Dashboards", "Homebrew", "Plugins",
+            "Dashboards", "Homebrew", "Plugins", "Apps", "Games",
             "Stealth Networks", "Backwards Compatibility",
             "Customization", "FakeAnim", "FakeAnim Boot Animations",
         ):
@@ -906,8 +912,29 @@ class MainWindow(ctk.CTk):
         # launch.ini — only writes if file doesn't already exist on USB
         Installer.generate_launch_ini(usb_path, log)
 
-        # Install / stub all selected catalog items
+        # Install-tab baseline items: XeXMenu + Rock Band (skip if flagged)
         downloaded = downloaded or {}
+        for _k, _skip in (("xexmenu", "skip_xexmenu"), ("rock_band", "skip_rock_band")):
+            entry = CATALOG.get(_k)
+            if not entry:
+                continue
+            if install_opts.get(_skip, False):
+                log(f"  ⏭ {entry['name']} omitido (skip habilitado)")
+                continue
+            dest_rel = entry.get("dest", f"Homebrew/{_k}")
+            zip_path = downloaded.get(_k)
+            if zip_path and os.path.exists(zip_path):
+                try:
+                    Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
+                    log(f"  ✓ {entry['name']} → {dest_rel}/", "success")
+                except Exception as exc:
+                    log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
+                    os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
+            else:
+                os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
+                log(f"  ⚠ {entry['name']} no descargado → carpeta creada", "warning")
+
+        # Install / stub all selected catalog items
         log(f"[DEBUG] _generate_extras recibió downloaded: {list(downloaded.keys())}")
         for tab_key in ("dashboards", "homebrew", "stealth", "plugins"):
             for k, selected in all_opts[tab_key].items():
