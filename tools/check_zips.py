@@ -36,12 +36,28 @@ def _simulate_extract(names: list, dest_rel: str) -> tuple[str, str, list[str]]:
 
     prefix = ""
     if dest_rel:
-        roots = {n.split("/")[0] for n in clean if n}
-        if len(roots) == 1:
+        remaining = list(clean)
+        accumulated = ""
+        while True:
+            roots = {n.split("/")[0] for n in remaining if n}
+            if len(roots) != 1:
+                break
             candidate = list(roots)[0]
             candidate_slash = candidate + "/"
-            if all(n == candidate or n.startswith(candidate_slash) for n in clean):
-                prefix = candidate_slash
+            has_children = any(n.startswith(candidate_slash) for n in remaining)
+            if not has_children:
+                break
+            if not all(n == candidate or n.startswith(candidate_slash) for n in remaining):
+                break
+            accumulated += candidate_slash
+            remaining = [
+                n[len(candidate_slash):]
+                for n in remaining
+                if n.startswith(candidate_slash) and len(n) > len(candidate_slash)
+            ]
+            if not remaining:
+                break
+        prefix = accumulated
 
     real_files = [n for n in clean if not n.endswith("/")]
     previews = []

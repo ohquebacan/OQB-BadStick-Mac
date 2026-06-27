@@ -164,18 +164,32 @@ class Installer:
                 if not n.startswith("__MACOSX/") and ".DS_Store" not in n
             ]
 
-            # Detect single top-level prefix to strip (only for subfolder extractions)
+            # Detectar y eliminar recursivamente todos los niveles de wrapper de root único
+            # (solo cuando dest_rel no está vacío — con dest="" queremos estructura completa)
             prefix = ""
             if dest_rel:
-                roots = {n.split("/")[0] for n in names if n}
-                if len(roots) == 1:
+                remaining = list(names)
+                accumulated = ""
+                while True:
+                    roots = {n.split("/")[0] for n in remaining if n}
+                    if len(roots) != 1:
+                        break
                     candidate = list(roots)[0]
                     candidate_slash = candidate + "/"
-                    if all(
-                        n == candidate or n.startswith(candidate_slash)
-                        for n in names
-                    ):
-                        prefix = candidate_slash
+                    has_children = any(n.startswith(candidate_slash) for n in remaining)
+                    if not has_children:
+                        break
+                    if not all(n == candidate or n.startswith(candidate_slash) for n in remaining):
+                        break
+                    accumulated += candidate_slash
+                    remaining = [
+                        n[len(candidate_slash):]
+                        for n in remaining
+                        if n.startswith(candidate_slash) and len(n) > len(candidate_slash)
+                    ]
+                    if not remaining:
+                        break
+                prefix = accumulated
 
             if log_callback:
                 log_callback(f"    [zip] roots={set(n.split('/')[0] for n in names if n)!r}  prefix={prefix!r}  target={target!r}")
