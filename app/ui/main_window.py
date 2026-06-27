@@ -105,7 +105,7 @@ class MainWindow(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
 
         self.title(f"{APP_NAME} v{APP_VERSION}")
-        self.geometry("980x760")
+        self.geometry("980x800")
         self.resizable(False, False)
 
         self._system = platform.system()

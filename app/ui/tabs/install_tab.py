@@ -3,7 +3,6 @@ import os
 import customtkinter as ctk
 
 from app.core.catalog import CATALOG
-from app.core.config import LAUNCH_INI_CONTENT
 
 # (key, button_label, desc, base_color, active_color, base_border, active_border)
 _PROFILE_DEFS = [
@@ -299,31 +298,10 @@ class InstallTab(ctk.CTkFrame):
             self._profile_callback(key)
 
     def _open_config_editor(self):
-        win = ctk.CTkToplevel(self)
-        win.title("Editor de Configuración — launch.ini")
-        win.geometry("500x420")
-        win.resizable(True, True)
-        win.grab_set()
-
-        ctk.CTkLabel(
-            win, text="launch.ini",
-            font=ctk.CTkFont(size=13, weight="bold"),
-        ).pack(pady=(12, 4))
-
-        editor = ctk.CTkTextbox(
-            win, font=ctk.CTkFont(family="Courier", size=11), height=310,
-        )
-        editor.pack(fill="both", expand=True, padx=12, pady=4)
-        editor.insert("1.0", self._custom_launch_ini or LAUNCH_INI_CONTENT)
-
-        def _save():
-            self._custom_launch_ini = editor.get("1.0", "end")
-            win.destroy()
-
-        ctk.CTkButton(
-            win, text="Guardar y cerrar", command=_save,
-            fg_color="#107C10", hover_color="#0d6a0d",
-        ).pack(pady=8)
+        from app.ui.dialogs.launch_ini_editor import LaunchIniEditor
+        main_window    = self.winfo_toplevel()
+        device_manager = getattr(main_window, "device_manager", None)
+        LaunchIniEditor(main_window, device_manager=device_manager)
 
     # ------------------------------------------------------------------ #
     # Public API                                                           #
