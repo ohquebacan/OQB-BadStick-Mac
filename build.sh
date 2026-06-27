@@ -17,14 +17,19 @@ pip3 install -r requirements.txt --quiet
 pip3 install pyinstaller --quiet
 
 # ── 2. Ícono ─────────────────────────────────────────────────────────
-echo "→ Generando ícono..."
-python3 -c "
+echo "→ Verificando ícono..."
+if [[ -f "assets/icon.png" ]]; then
+    echo "  ✓ assets/icon.png existente — usando el real (no se sobreescribe)"
+else
+    echo "  ⚠ assets/icon.png no encontrado — generando placeholder..."
+    python3 -c "
 import os, sys
 sys.path.insert(0, '.')
 from app.utils.helpers import generate_icon
 os.makedirs('assets', exist_ok=True)
 generate_icon('assets/icon.png')
 "
+fi
 
 ICON_FILE="assets/icon.png"
 if [[ "$OSTYPE" == "darwin"* ]]; then
