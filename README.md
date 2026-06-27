@@ -1,13 +1,13 @@
 # OQB BadStick Mac
 
 ![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)
-![macOS](https://img.shields.io/badge/macOS-compatible-brightgreen)
+![macOS](https://img.shields.io/badge/macOS-10.15%2B-brightgreen)
 ![Linux](https://img.shields.io/badge/Linux-compatible-brightgreen)
-![MIT License](https://img.shields.io/badge/License-MIT-green)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 > Primera herramienta con GUI para preparar un USB con el exploit **ABadAvatar** en macOS y Linux — sin necesidad de Windows.
 
-[screenshot aquí]
+> [Screenshot próximamente]
 
 ---
 
@@ -21,37 +21,36 @@ El exploit **no es permanente** — debe repetirse cada vez que se reinicia la c
 
 ## Requisitos
 
-- Python 3.9+ con pip  
-  _o bien: descargar el `.app` desde [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases) (no requiere Python)_
-- macOS 11+ o Linux con `lsblk` y `udisksctl`
+- **macOS 10.15+** o **Linux** (con `lsblk` y `udisksctl`)
+- Python 3.9+ con pip _(o descarga el `.app` desde [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases))_
 - Conexión a internet (para descargar los exploits)
-- Un USB de al menos 256 MB formateado o sin partición
+- USB de al menos 256 MB
 
 ---
 
 ## Instalación
 
-### Opción A — Ejecutar desde código fuente
+### Método 1 — Ejecutar desde código fuente (Python 3.9+)
 
 ```bash
 git clone https://github.com/ohquebacan/OQB-BadStick-Mac.git
 cd OQB-BadStick-Mac
 pip install -r requirements.txt
-python main.py
+python3 main.py
 ```
 
-### Opción B — Descargar .app (macOS, sin Python)
+### Método 2 — Descargar .app (próximamente en Releases)
 
 1. Ve a [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases)
 2. Descarga `OQB BadStick Mac.app.zip`
 3. Descomprime y arrastra a Aplicaciones
-4. En la primera apertura: clic derecho → Abrir (para omitir Gatekeeper)
+4. Primera apertura: clic derecho → **Abrir** (omitir Gatekeeper)
 
 ---
 
 ## Qué instala automáticamente
 
-| Componente | Fuente | Carpeta en USB |
+| Componente | Fuente | Destino en USB |
 |---|---|---|
 | ABadAvatar (exploit) | shutterbug2000/ABadAvatar | `BadUpdatePayload/` + `Content/` |
 | XeUnshackle _o_ FreeMyXe (payload) | Byrom90 / FreeMyXe | `BadUpdatePayload/default.xex` |
@@ -62,8 +61,18 @@ python main.py
 
 | Componente | Por qué es manual | Instrucciones |
 |---|---|---|
-| **Aurora Dashboard** | Distribuido como RAR, sin release en GitHub | Descarga en [phoenix.xboxunity.net](https://phoenix.xboxunity.net/#/news), extrae en `USB/Apps/Aurora/` |
-| **XeXMenu** | Sin release oficial | Busca en se7ensins.com, extrae en `USB/Apps/XeXMenu/` |
+| **Aurora Dashboard** | Distribuido como RAR, sin release en GitHub | Descarga en [phoenix.xboxunity.net](https://phoenix.xboxunity.net), extrae en `USB/Apps/Aurora/` |
+| **XeXMenu** | Sin release oficial público | Busca en se7ensins.com, extrae en `USB/Apps/XeXMenu/` |
+
+---
+
+## Perfiles de instalación rápida
+
+| Perfil | Qué incluye |
+|---|---|
+| **Mínima** | Solo el exploit (ABadAvatar + XeUnshackle) |
+| **Recomendada** | Exploit + Aurora + utilidades esenciales |
+| **Completa** | Todo lo disponible en cada pestaña |
 
 ---
 
@@ -105,7 +114,7 @@ USB/
 
 ---
 
-## Generar .app (para distribución)
+## Generar .app (distribución macOS)
 
 ```bash
 chmod +x build.sh
@@ -121,12 +130,13 @@ chmod +x build.sh
 |---|---|
 | [BadStick](https://github.com/LxcyDr0p/BadStick) — inspiración y referencia de flujo (versión Windows) | LxcyDr0p |
 | [ABadAvatar](https://github.com/shutterbug2000/ABadAvatar) — exploit | shutterbug2000 |
-| [XeUnshackle](https://github.com/Byrom90/XeUnshackle) — payload | Byrom90 |
+| [ABadMemUnit](https://github.com/shutterbug2000/ABadMemUnit) — variante Memory Unit | shutterbug2000 |
+| [XeUnshackle](https://github.com/Byrom90/XeUnshackle) — payload principal | Byrom90 |
 | [FreeMyXe](https://github.com/FreeMyXe/FreeMyXe) — payload alternativo | InvoxiPlayGames |
 | Aurora Dashboard — dashboard homebrew | Phoenix Team |
 | XeXMenu — administrador de archivos | Team XeDEV |
 | [Simple 360 NAND Flasher](https://github.com/Swizzy/XDK_Projects) — backup de NAND | Swizzy |
-| [Xbox360BadUpdate](https://github.com/grimdoomer/Xbox360BadUpdate) — exploit original | Grimdoomer |
+| [Xbox360BadUpdate](https://github.com/grimdoomer/Xbox360BadUpdate) — exploit base | Grimdoomer |
 
 **Para usuarios de Windows:** usa [BadStick](https://github.com/LxcyDr0p/BadStick) de LxcyDr0p.
 
@@ -146,20 +156,28 @@ The exploit is **not permanent** — it must be re-run every time the console re
 
 ## Requirements
 
-- Python 3.9+ with pip  
-  _or: download the `.app` from [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases) (no Python needed)_
-- macOS 11+ or Linux with `lsblk` and `udisksctl`
+- **macOS 10.15+** or **Linux** (with `lsblk` and `udisksctl`)
+- Python 3.9+ with pip _(or download the `.app` from [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases))_
 - Internet connection (to download exploits)
 - A USB drive of at least 256 MB
 
 ## Quick start
 
+**Method 1 — from source (Python 3.9+)**
+
 ```bash
 git clone https://github.com/ohquebacan/OQB-BadStick-Mac.git
 cd OQB-BadStick-Mac
 pip install -r requirements.txt
-python main.py
+python3 main.py
 ```
+
+**Method 2 — download .app (coming soon in Releases)**
+
+1. Go to [Releases](https://github.com/ohquebacan/OQB-BadStick-Mac/releases)
+2. Download `OQB BadStick Mac.app.zip`
+3. Unzip and drag to Applications
+4. First launch: right-click → **Open** (to bypass Gatekeeper)
 
 ## Security warnings
 
@@ -169,10 +187,10 @@ python main.py
 
 ## Credits
 
-BadStick (Windows original) by [LxcyDr0p](https://github.com/LxcyDr0p/BadStick) · ABadAvatar by shutterbug2000 · XeUnshackle by Byrom90 · FreeMyXe by InvoxiPlayGames · Aurora by Phoenix Team · XeXMenu by Team XeDEV · NAND Flasher by Swizzy · Xbox360BadUpdate exploit by Grimdoomer
+BadStick (Windows) by [LxcyDr0p](https://github.com/LxcyDr0p/BadStick) · ABadAvatar/ABadMemUnit by shutterbug2000 · XeUnshackle by Byrom90 · FreeMyXe by InvoxiPlayGames · Aurora by Phoenix Team · XeXMenu by Team XeDEV · NAND Flasher by Swizzy · Xbox360BadUpdate base exploit by Grimdoomer
 
 **Windows users:** use [BadStick](https://github.com/LxcyDr0p/BadStick).
 
 ---
 
-MIT License © 2024 OQB / ohquebacan.com
+MIT License © 2025 OQB / ohquebacan.com

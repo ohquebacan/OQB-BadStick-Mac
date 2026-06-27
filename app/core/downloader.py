@@ -1,4 +1,5 @@
 import os
+import time
 
 import requests
 
@@ -24,6 +25,10 @@ class Downloader:
             return None
 
     def download_file(self, url: str, dest_path: str, progress_callback) -> bool:
+        """
+        progress_callback(downloaded_bytes, total_bytes, speed_bps)
+        speed_bps is a rolling average over the last second of data.
+        """
         try:
             response = requests.get(
                 url,
@@ -38,62 +43,28 @@ class Downloader:
             downloaded = 0
             chunk_size = 65536  # 64 KB
 
+            # Speed tracking
+            window_start = time.monotonic()
+            window_bytes = 0
+            speed_bps = 0.0
+
             with open(dest_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=chunk_size):
                     if chunk:
                         f.write(chunk)
-                        downloaded += len(chunk)
-                        progress_callback(downloaded, total)
+                        n = len(chunk)
+                        downloaded += n
+                        window_bytes += n
+
+                        now = time.monotonic()
+                        elapsed = now - window_start
+                        if elapsed >= 0.5:
+                            speed_bps = window_bytes / elapsed
+                            window_start = now
+                            window_bytes = 0
+
+                        progress_callback(downloaded, total, speed_bps)
+
             return True
         except Exception:
             return False
-
-    def download_all(
-        self,
-        sources: list,
-        dest_dir: str,
-        progress_callback,
-        log_callback,
-    ) -> dict:
-        os.makedirs(dest_dir, exist_ok=True)
-        results = {}
-
-        for key in sources:
-            if key not in SOURCES:
-                continue
-            source = SOURCES[key]
-            name = source["name"]
-            log_callback(f"Descargando {name}...")
-
-            url = None
-            if "api_url" in source:
-                url = self.get_latest_release_url(
-                    source["api_url"], source["asset_pattern"]
-                )
-                if url:
-                    log_callback("  → Usando release más reciente")
-                else:
-                    log_callback("  → API no disponible, usando URL de respaldo")
-                    url = source.get("fallback_url")
-            elif "direct_url" in source:
-                url = source["direct_url"]
-
-            if not url:
-                log_callback(f"  ❌ No se pudo obtener URL para {name}")
-                continue
-
-            dest_path = os.path.join(dest_dir, f"{key}.zip")
-
-            def _make_cb(src_name):
-                def cb(dl, total):
-                    progress_callback(src_name, dl / total if total else 0)
-                return cb
-
-            success = self.download_file(url, dest_path, _make_cb(name))
-            if success:
-                log_callback(f"  ✓ {name} descargado")
-                results[key] = dest_path
-            else:
-                log_callback(f"  ❌ Error descargando {name}")
-
-        return results
