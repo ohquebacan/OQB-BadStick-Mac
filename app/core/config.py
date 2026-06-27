@@ -1,7 +1,7 @@
 import os
 
 APP_NAME = "OQB BadStick Mac"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 APP_AUTHOR = "OQB / ohquebacan.com"
 GITHUB_REPO = "ohquebacan/OQB-BadStick-Mac"
 TEMP_DIR = os.path.expanduser("~/OQB-BadStick-Mac/temp")
