@@ -914,6 +914,7 @@ class MainWindow(ctk.CTk):
 
         # Install-tab baseline items: XeXMenu + Rock Band (skip if flagged)
         downloaded = downloaded or {}
+        update_mode = install_opts.get("skip_format", False)
         for _k, _skip in (("xexmenu", "skip_xexmenu"), ("rock_band", "skip_rock_band")):
             entry = CATALOG.get(_k)
             if not entry:
@@ -926,7 +927,8 @@ class MainWindow(ctk.CTk):
             if zip_path and os.path.exists(zip_path):
                 try:
                     Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
-                    log(f"  ✓ {entry['name']} → {dest_rel}/", "success")
+                    tag = " (actualizado)" if update_mode else ""
+                    log(f"  ✓ {entry['name']} → {dest_rel}/{tag}", "success")
                 except Exception as exc:
                     log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
                     os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
@@ -952,7 +954,8 @@ class MainWindow(ctk.CTk):
                 if item_type == "auto" and zip_path and os.path.exists(zip_path):
                     try:
                         Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
-                        log(f"  ✓ {entry['name']} → {dest_rel or 'raíz'}/", "success")
+                        tag = " (actualizado)" if update_mode else ""
+                        log(f"  ✓ {entry['name']} → {dest_rel or 'raíz'}/{tag}", "success")
                     except Exception as exc:
                         log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
                         dest = os.path.join(usb_path, *dest_rel.split("/")) if dest_rel else usb_path

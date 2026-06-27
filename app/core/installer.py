@@ -177,7 +177,8 @@ class Installer:
                     ):
                         prefix = candidate_slash
 
-            count = 0
+            new_count = 0
+            upd_count = 0
             for name in names:
                 rel = name[len(prefix):] if prefix else name
                 if not rel:
@@ -192,13 +193,22 @@ class Installer:
                     os.makedirs(dest, exist_ok=True)
                 else:
                     os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    is_new = not os.path.exists(dest)
                     with zf.open(name) as src, open(dest, "wb") as dst:
                         shutil.copyfileobj(src, dst)
-                    count += 1
+                    if is_new:
+                        new_count += 1
+                    else:
+                        upd_count += 1
 
             if log_callback:
-                log_callback(f"    → {count} archivos extraídos")
-            return count
+                if upd_count and new_count:
+                    log_callback(f"    → {new_count} nuevos + {upd_count} actualizados")
+                elif upd_count:
+                    log_callback(f"    → {upd_count} archivos actualizados")
+                else:
+                    log_callback(f"    → {new_count} archivos extraídos")
+            return new_count + upd_count
 
     # ------------------------------------------------------------------ #
 
