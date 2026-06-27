@@ -177,6 +177,9 @@ class Installer:
                     ):
                         prefix = candidate_slash
 
+            if log_callback:
+                log_callback(f"    [zip] roots={set(n.split('/')[0] for n in names if n)!r}  prefix={prefix!r}  target={target!r}")
+
             new_count = 0
             upd_count = 0
             for name in names:

@@ -43,9 +43,9 @@ CATALOG = {
         "tab": "install",
         "type": "auto",
         "direct_url": _BASE + "XeXMenu.zip",
-        "dest": "Apps/XeXMenu",
+        "dest": "",
         "author": "Team XeDEV",
-        "desc": "File manager homebrew para Xbox 360",
+        "desc": "File manager homebrew para Xbox 360 (Content package — se instala en Content/)",
     },
     "rock_band": {
         "name": "Rock Band Blitz",

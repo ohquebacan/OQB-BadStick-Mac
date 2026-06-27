@@ -314,7 +314,27 @@ class MainWindow(ctk.CTk):
         if self._system == "Windows":
             self._log("Windows detectado — solo macOS / Linux soportados", "error")
             self._start_btn.configure(state="disabled")
+        self._clear_invalid_cache()
         self._refresh_devices()
+
+    def _clear_invalid_cache(self):
+        """Remove any .zip files in TEMP_DIR that are not valid ZIP archives."""
+        import zipfile as _zf
+        if not os.path.exists(TEMP_DIR):
+            return
+        removed = []
+        for fname in os.listdir(TEMP_DIR):
+            if not fname.endswith(".zip"):
+                continue
+            fpath = os.path.join(TEMP_DIR, fname)
+            try:
+                if not _zf.is_zipfile(fpath):
+                    os.remove(fpath)
+                    removed.append(fname)
+            except Exception:
+                pass
+        if removed:
+            self._log(f"⚠ Caché limpiado: {len(removed)} ZIP(s) inválido(s) eliminado(s): {removed}", "warning")
 
     def _refresh_devices(self):
         devices = self._device_manager.list_usb_devices()
@@ -658,14 +678,24 @@ class MainWindow(ctk.CTk):
 
                     dest = os.path.join(tmp, f"{key}.zip")
 
-                    # ── Cache hit: skip download ───────────────────────
+                    # ── Cache hit: validate it's a real ZIP then skip download ─
+                    _cache_ok = False
                     if os.path.exists(dest) and os.path.getsize(dest) > 0:
+                        try:
+                            import zipfile as _zf
+                            _cache_ok = _zf.is_zipfile(dest)
+                        except Exception:
+                            _cache_ok = False
+                    if _cache_ok:
                         size_mb = os.path.getsize(dest) / 1_048_576
                         log(f"⚡ {name} — usando caché local ({size_mb:.1f} MB)")
                         src_prog[i] = 1.0
                         downloaded[key] = dest
                         self.after(0, lambda: self._speed_lbl.configure(text=""))
                         continue
+                    elif os.path.exists(dest):
+                        os.remove(dest)
+                        log(f"⚠ Caché de {name} inválido — re-descargando…", "warning")
 
                     # ── Cache miss: resolve URL then download ──────────
                     log(f"⬇ {name} — descargando…")
@@ -922,18 +952,24 @@ class MainWindow(ctk.CTk):
             if install_opts.get(_skip, False):
                 log(f"  ⏭ {entry['name']} omitido (skip habilitado)")
                 continue
-            dest_rel = entry.get("dest", f"Homebrew/{_k}")
+            dest_rel = entry.get("dest", "")
             zip_path = downloaded.get(_k)
             if zip_path and os.path.exists(zip_path):
                 try:
-                    Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
+                    count = Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
                     tag = " (actualizado)" if update_mode else ""
-                    log(f"  ✓ {entry['name']} → {dest_rel}/{tag}", "success")
+                    dest_label = dest_rel or "raíz USB"
+                    if count == 0:
+                        log(f"  ⚠ {entry['name']} extraído pero 0 archivos escritos — verificá estructura ZIP", "warning")
+                    else:
+                        log(f"  ✓ {entry['name']} → {dest_label}{tag} ({count} archivos)", "success")
                 except Exception as exc:
                     log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
-                    os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
+                    if dest_rel:
+                        os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
             else:
-                os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
+                if dest_rel:
+                    os.makedirs(os.path.join(usb_path, *dest_rel.split("/")), exist_ok=True)
                 log(f"  ⚠ {entry['name']} no descargado → carpeta creada", "warning")
 
         # Install / stub all selected catalog items
@@ -953,9 +989,13 @@ class MainWindow(ctk.CTk):
                 log(f"[DEBUG]   {k}: type={item_type}, dest={dest_rel!r}, en downloaded={k in downloaded}, zip_exists={bool(zip_path and os.path.exists(zip_path))}")
                 if item_type == "auto" and zip_path and os.path.exists(zip_path):
                     try:
-                        Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
+                        count = Installer.extract_zip_to(zip_path, usb_path, dest_rel, log)
                         tag = " (actualizado)" if update_mode else ""
-                        log(f"  ✓ {entry['name']} → {dest_rel or 'raíz'}/{tag}", "success")
+                        dest_label = dest_rel or "raíz USB"
+                        if count == 0:
+                            log(f"  ⚠ {entry['name']} extraído pero 0 archivos escritos", "warning")
+                        else:
+                            log(f"  ✓ {entry['name']} → {dest_label}{tag} ({count} archivos)", "success")
                     except Exception as exc:
                         log(f"  ⚠ Error extrayendo {entry['name']}: {exc}", "error")
                         dest = os.path.join(usb_path, *dest_rel.split("/")) if dest_rel else usb_path
