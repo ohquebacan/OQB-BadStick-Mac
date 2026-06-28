@@ -74,7 +74,12 @@ EXPLOIT_INFO = {
 
 PAYLOAD_INFO = "XeUnshackle es más compatible con plugins y stealth servers"
 
-_LAUNCH_INI_SETTINGS = r"""
+_LAUNCH_INI_HEADER = """; launch.xex V3.0 config file
+; parsed by simpleIni http://code.jellycan.com/simpleini/
+; --- Generado por OQB BadStick Mac ---
+"""
+
+_LAUNCH_INI_FOOTER = r"""
 [Externals]
 ftpserv = false
 ftpport = 21
@@ -101,7 +106,7 @@ noupdater = true
 debugout = true
 exchandler = true
 liveblock = true
-livestrong = true
+livestrong = false
 remotenxe = false
 hddalive = false
 hddtimer = 210
@@ -123,6 +128,17 @@ autoswap = false
 nohealth = true
 nooobe = true
 autofake = false
+autofake0 = 0x00000000
+autofake1 = 0x00000000
+autofake2 = 0x00000000
+autofake3 = 0x00000000
+autofake4 = 0x00000000
+autofake5 = 0x00000000
+autofake6 = 0x00000000
+autofake7 = 0x00000000
+autofake8 = 0x00000000
+autofake9 = 0x00000000
+autocont = false
 """
 
 XEXMENU_CONTENT_PATH = r"Usb:\Content\0000000000000000\C0DE9999\00080000\C0DE99990F586558"
@@ -183,7 +199,7 @@ def build_launch_ini(
         val = plugin_paths[i - 1] if i <= len(plugin_paths) else ""
         plugin_lines += f"plugin{i} = {val}\n"
 
-    return (
+    paths_block = (
         "[Paths]\n"
         f"BUT_A =\n"
         f"BUT_B =\n"
@@ -202,7 +218,7 @@ def build_launch_ini(
         f"Fakeanim =\n"
         f"Dumpfile =\n"
         f"\n"
-        f"[Plugins]\n"
-        f"{plugin_lines}"
-        + _LAUNCH_INI_SETTINGS
     )
+    plugins_block = f"[Plugins]\n{plugin_lines}"
+
+    return _LAUNCH_INI_HEADER + paths_block + plugins_block + _LAUNCH_INI_FOOTER
