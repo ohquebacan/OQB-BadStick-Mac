@@ -239,6 +239,7 @@ class LaunchIniEditor(ctk.CTkToplevel):
             ("💾  Guardar",       "#107C10", self._save),
             ("🗑  Limpiar",        "#2d2d2d", self._clear),
             ("📂  Abrir",          "#2d2d2d", self._open_file),
+            ("🔄  Recargar USB",  "#1a3a1a", self._reload_from_usb),
             ("📄  New Launch.ini", "#2d2d2d", self._new),
             ("💡  Consejos",       "#2d2d2d", self._show_tips),
             ("↩  Volver",          "#3a3a3a", self.destroy),
@@ -246,10 +247,16 @@ class LaunchIniEditor(ctk.CTkToplevel):
             ctk.CTkButton(
                 inner, text=text, command=cmd,
                 fg_color=fg,
-                hover_color="#0d6b0d" if fg == "#107C10" else "#4a4a4a",
+                hover_color=(
+                    "#0d6b0d" if fg == "#107C10"
+                    else "#2a5a2a" if fg == "#1a3a1a"
+                    else "#4a4a4a"
+                ),
                 width=120, height=30,
                 font=ctk.CTkFont(size=11),
             ).pack(side="left", padx=(0, 5))
+
+        self.after(100, self._auto_load_from_usb)
 
     # ------------------------------------------------------------------ #
     # Editor factory                                                       #
@@ -520,3 +527,56 @@ class LaunchIniEditor(ctk.CTkToplevel):
         editor.delete("1.0", "end")
         editor.insert("1.0", new_content)
         self._refresh_line_nums("Launch.ini")
+
+    # ------------------------------------------------------------------ #
+    # USB auto-load / reload                                               #
+    # ------------------------------------------------------------------ #
+
+    def _auto_load_from_usb(self):
+        """Si hay un launch.ini en el USB, cargarlo automáticamente."""
+        usb_path = self._resolve_usb_path()
+        if not usb_path:
+            return
+        ini_path = os.path.join(usb_path, "launch.ini")
+        if not os.path.exists(ini_path):
+            return
+        try:
+            with open(ini_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            d = self._editors["Launch.ini"]
+            d["editor"].delete("1.0", "end")
+            d["editor"].insert("1.0", content)
+            self._refresh_line_nums("Launch.ini")
+            self.title("Editor — launch.ini cargado desde USB  ✓")
+        except Exception:
+            pass
+
+    def _reload_from_usb(self):
+        """Recargar el launch.ini actual del USB, descartando cambios no guardados."""
+        usb_path = self._resolve_usb_path()
+        if not usb_path:
+            messagebox.showerror("Sin USB",
+                "No hay USB montado.", parent=self)
+            return
+        ini_path = os.path.join(usb_path, "launch.ini")
+        if not os.path.exists(ini_path):
+            messagebox.showwarning("No encontrado",
+                "No hay launch.ini en el USB todavía.\n"
+                "Generá uno primero con '📄 Solo launch.ini'.",
+                parent=self)
+            return
+        d = self._editors["Launch.ini"]
+        if d["editor"].get("1.0", "end-1c").strip():
+            if not messagebox.askyesno("¿Recargar?",
+                "¿Reemplazar el contenido actual con el launch.ini del USB?",
+                parent=self):
+                return
+        try:
+            with open(ini_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            d["editor"].delete("1.0", "end")
+            d["editor"].insert("1.0", content)
+            self._refresh_line_nums("Launch.ini")
+            self.title("Editor — launch.ini cargado desde USB  ✓")
+        except Exception as exc:
+            messagebox.showerror("Error", str(exc), parent=self)
