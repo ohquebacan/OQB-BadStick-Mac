@@ -2,7 +2,6 @@ import os
 import shutil
 import zipfile
 
-from app.core.config import LAUNCH_INI_CONTENT
 
 
 class Installer:
@@ -254,18 +253,3 @@ class Installer:
                 with zf.open(name) as src, open(dest, "wb") as dst:
                     shutil.copyfileobj(src, dst)
 
-    @staticmethod
-    def generate_launch_ini(usb_path: str, log_callback=None):
-        """Write a default launch.ini only if one does not already exist."""
-        def _log(msg):
-            if log_callback:
-                log_callback(msg)
-
-        ini_path = os.path.join(usb_path, "launch.ini")
-        if os.path.exists(ini_path):
-            _log("  ℹ launch.ini existente preservado")
-            return
-
-        with open(ini_path, "w", newline="\r\n", encoding="utf-8") as f:
-            f.write(LAUNCH_INI_CONTENT.lstrip("\n"))
-        _log("  📄 launch.ini generado (puedes editarlo desde Tab 6 → Configuración)")

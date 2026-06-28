@@ -14,6 +14,7 @@ from app.core.catalog import CATALOG, METHOD_DL_MAP
 from app.ui.quick_profiles import HARDMOD_KEYS
 from app.core.config import (
     APP_NAME, APP_VERSION, GITHUB_REPO, DISCORD_URL, TEMP_DIR,
+    build_launch_ini, XEXMENU_CONTENT_PATH,
 )
 from app.core.device_manager import DeviceManager
 from app.core.downloader import Downloader
@@ -939,8 +940,25 @@ class MainWindow(ctk.CTk):
         ):
             os.makedirs(os.path.join(usb_path, folder), exist_ok=True)
 
-        # launch.ini — only writes if file doesn't already exist on USB
-        Installer.generate_launch_ini(usb_path, log)
+        # launch.ini — generado dinámicamente según lo instalado
+        installed_keys = set(downloaded.keys())
+        _xex_check = os.path.join(usb_path, "Content", "0000000000000000", "C0DE9999")
+        if os.path.exists(_xex_check):
+            installed_keys.add("xexmenu")
+
+        default_launcher = install_opts.get("default_launcher", "aurora")
+
+        if (default_launcher not in ("xexmenu", "official")
+                and default_launcher not in installed_keys):
+            log(f"  ⚠ Launcher '{default_launcher}' no instalado → fallback a Dashboard Oficial",
+                "warning")
+            default_launcher = "official"
+
+        ini_content = build_launch_ini(default_launcher, installed_keys, CATALOG)
+        ini_path = os.path.join(usb_path, "launch.ini")
+        with open(ini_path, "w", encoding="utf-8", newline="\r\n") as f:
+            f.write(ini_content)
+        log(f"  ✓ launch.ini generado — Default: {default_launcher}", "success")
 
         # Install-tab baseline items: XeXMenu + Rock Band (skip if flagged)
         downloaded = downloaded or {}

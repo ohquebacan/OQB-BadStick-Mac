@@ -61,6 +61,7 @@ class InstallTab(ctk.CTkFrame):
             "skip_format":      ctk.BooleanVar(value=False),
             "install_all":      ctk.BooleanVar(value=False),
             "exit_when_done":   ctk.BooleanVar(value=False),
+            "default_launcher": ctk.StringVar(value="aurora"),
         }
         self._toggleable         = []
         self._custom_launch_ini  = None
@@ -223,6 +224,34 @@ class InstallTab(ctk.CTkFrame):
             font=ctk.CTkFont(size=11, weight="bold"), text_color="#aaaaaa",
         ).pack(anchor="w", pady=(0, 4))
 
+        # ── Default Launcher ──────────────────────────────────────────
+        launcher_frame = ctk.CTkFrame(right, fg_color="transparent")
+        launcher_frame.pack(anchor="w", pady=(0, 6))
+
+        ctk.CTkLabel(
+            launcher_frame, text="Launcher por defecto:",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#aaaaaa",
+        ).pack(side="left", padx=(0, 10))
+
+        for _lbl, _val in [
+            ("Aurora",            "aurora"),
+            ("Freestyle",         "freestyle"),
+            ("XeXMenu",           "xexmenu"),
+            ("Dashboard Oficial", "official"),
+        ]:
+            rb = ctk.CTkRadioButton(
+                launcher_frame,
+                text=_lbl,
+                variable=self._config_vars["default_launcher"],
+                value=_val,
+                font=ctk.CTkFont(size=11),
+                fg_color="#107C10", hover_color="#0d6a0d",
+                command=self._on_change,
+            )
+            rb.pack(side="left", padx=(0, 12))
+            self._toggleable.append(rb)
+
         cfg_frame = ctk.CTkFrame(right, fg_color="transparent")
         cfg_frame.pack(anchor="w")
         cfg_frame.grid_columnconfigure((0, 1), weight=0)
@@ -341,7 +370,8 @@ class InstallTab(ctk.CTkFrame):
             "patch":  self._patch_var.get(),
             "custom_launch_ini": self._custom_launch_ini,
         }
-        opts.update({k: v.get() for k, v in self._config_vars.items()})
+        for k, v in self._config_vars.items():
+            opts[k] = v.get()
         return opts
 
     def set_enabled(self, enabled: bool):

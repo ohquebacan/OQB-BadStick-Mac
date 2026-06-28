@@ -74,31 +74,7 @@ EXPLOIT_INFO = {
 
 PAYLOAD_INFO = "XeUnshackle es más compatible con plugins y stealth servers"
 
-LAUNCH_INI_CONTENT = r"""[Paths]
-BUT_A =
-BUT_B =
-BUT_X = Usb:\Content\0000000000000000\C0DE9999\00080000\C0DE99990F586558
-BUT_Y = Sfc:\dash.xex
-Start =
-Back =
-LBump =
-RThumb =
-LThumb =
-
-Default =
-Guide =
-Power =
-Configapp =
-Fakeanim =
-Dumpfile =
-
-[Plugins]
-plugin1 =
-plugin2 =
-plugin3 =
-plugin4 =
-plugin5 =
-
+_LAUNCH_INI_SETTINGS = r"""
 [Externals]
 ftpserv = false
 ftpport = 21
@@ -147,15 +123,86 @@ autoswap = false
 nohealth = true
 nooobe = true
 autofake = false
-autofake0 = 0x00000000
-autofake1 = 0x00000000
-autofake2 = 0x00000000
-autofake3 = 0x00000000
-autofake4 = 0x00000000
-autofake5 = 0x00000000
-autofake6 = 0x00000000
-autofake7 = 0x00000000
-autofake8 = 0x00000000
-autofake9 = 0x00000000
-autocont = false
 """
+
+XEXMENU_CONTENT_PATH = r"Usb:\Content\0000000000000000\C0DE9999\00080000\C0DE99990F586558"
+
+
+def build_launch_ini(
+    default_launcher_key: str,
+    downloaded_keys: set,
+    catalog: dict,
+) -> str:
+    """
+    Genera launch.ini dinámicamente según lo que fue instalado.
+
+    default_launcher_key: clave del CATALOG (ej: "aurora", "freestyle"),
+        "xexmenu", o "official" (Sfc:\\dash.xex)
+    downloaded_keys: set de claves que fueron descargadas/instaladas
+    """
+
+    def usb_path(dest: str, xex: str) -> str:
+        return "Usb:\\" + dest.replace("/", "\\") + "\\" + xex
+
+    # ── Default ────────────────────────────────────────────────────────
+    if default_launcher_key == "official":
+        default_path = r"Sfc:\dash.xex"
+    elif default_launcher_key == "xexmenu":
+        default_path = XEXMENU_CONTENT_PATH
+    elif default_launcher_key in catalog and default_launcher_key in downloaded_keys:
+        e = catalog[default_launcher_key]
+        default_path = usb_path(e["dest"], e.get("xex", "default.xex"))
+    else:
+        default_path = ""
+
+    # ── BUT_X: XeXMenu si está instalado, si no vacío ──────────────────
+    but_x = XEXMENU_CONTENT_PATH if "xexmenu" in downloaded_keys else ""
+
+    # ── BUT_Y: siempre el dashboard oficial como escape ─────────────────
+    but_y = r"Sfc:\dash.xex"
+
+    # ── Plugins: construir lista desde lo instalado ─────────────────────
+    plugin_paths = []
+
+    if "general_plugins" in downloaded_keys:
+        e = catalog.get("general_plugins", {})
+        for xex_name in e.get("plugin_xex_list", []):
+            plugin_paths.append(f"Usb:\\Plugins\\{xex_name}")
+
+    plugin_keys_ordered = ["xbpirate", "hiddriver360", "hvp2"]
+    for key in plugin_keys_ordered:
+        if key not in downloaded_keys:
+            continue
+        e = catalog.get(key, {})
+        xex = e.get("xex")
+        if xex and e.get("dest"):
+            plugin_paths.append(usb_path(e["dest"], xex))
+
+    plugin_lines = ""
+    for i in range(1, 6):
+        val = plugin_paths[i - 1] if i <= len(plugin_paths) else ""
+        plugin_lines += f"plugin{i} = {val}\n"
+
+    return (
+        "[Paths]\n"
+        f"BUT_A =\n"
+        f"BUT_B =\n"
+        f"BUT_X = {but_x}\n"
+        f"BUT_Y = {but_y}\n"
+        f"Start =\n"
+        f"Back =\n"
+        f"LBump =\n"
+        f"RThumb =\n"
+        f"LThumb =\n"
+        f"\n"
+        f"Default = {default_path}\n"
+        f"Guide =\n"
+        f"Power =\n"
+        f"Configapp =\n"
+        f"Fakeanim =\n"
+        f"Dumpfile =\n"
+        f"\n"
+        f"[Plugins]\n"
+        f"{plugin_lines}"
+        + _LAUNCH_INI_SETTINGS
+    )
