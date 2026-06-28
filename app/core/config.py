@@ -222,3 +222,7 @@ def build_launch_ini(
     plugins_block = f"[Plugins]\n{plugin_lines}"
 
     return _LAUNCH_INI_HEADER + paths_block + plugins_block + _LAUNCH_INI_FOOTER
+
+
+# Backward-compat alias — LaunchIniEditor imports this name directly
+LAUNCH_INI_CONTENT = build_launch_ini("official", set(), {})

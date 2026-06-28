@@ -283,14 +283,14 @@ class InstallTab(ctk.CTkFrame):
             btn_row, text="Editor de Configuración  →",
             command=self._open_config_editor,
             fg_color="#2d2d2d", hover_color="#3d3d3d",
-            height=28, width=210, anchor="w",
+            height=32, width=220,
         ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
-            btn_row, text="📄 Solo launch.ini",
+            btn_row, text="📄  Solo launch.ini",
             command=self._on_launch_ini_only,
             fg_color="#1a3a1a", hover_color="#2a5a2a",
-            height=28, width=160,
+            height=32, width=180,
         ).pack(side="left")
 
     # ------------------------------------------------------------------ #
