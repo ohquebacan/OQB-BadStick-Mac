@@ -398,6 +398,26 @@ class LaunchIniEditor(ctk.CTkToplevel):
                 parent=self,
             )
 
+        # WARN — duplicated plugin paths
+        plugin_vals = [
+            kv.get(f"plugin{i}", "").strip()
+            for i in range(1, 6)
+        ]
+        non_empty = [v for v in plugin_vals if v]
+        if len(non_empty) != len(set(non_empty)):
+            from collections import Counter
+            dupes = [v for v, c in Counter(non_empty).items() if c > 1]
+            ok = messagebox.askyesno(
+                "⚠️  Plugins duplicados",
+                "Hay plugins repetidos en los slots:\n\n"
+                + "\n".join(f"  • {d}" for d in dupes)
+                + "\n\n¿Guardar de todas formas?",
+                icon="warning",
+                parent=self,
+            )
+            if not ok:
+                return False
+
         return True
 
     # ------------------------------------------------------------------ #
@@ -517,13 +537,17 @@ class LaunchIniEditor(ctk.CTkToplevel):
             if not messagebox.askyesno(
                 f"Preset: {label}",
                 f"¿Aplicar el preset '{label}'?\n\n"
-                "Solo se modifican las claves del preset;\n"
-                "el resto del contenido queda intacto.",
+                "Los plugin slots se limpiarán primero para evitar\n"
+                "duplicados, luego se aplica el preset.",
                 parent=self,
             ):
                 return
 
-        new_content = _apply_ini_patch(current, patch)
+        # Clear all plugin slots first, then overlay the preset
+        clean_patch = {f"plugin{i}": "" for i in range(1, 6)}
+        clean_patch.update(patch)
+
+        new_content = _apply_ini_patch(current, clean_patch)
         editor.delete("1.0", "end")
         editor.insert("1.0", new_content)
         self._refresh_line_nums("Launch.ini")

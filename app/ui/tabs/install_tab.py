@@ -106,8 +106,13 @@ class InstallTab(ctk.CTkFrame):
             font=ctk.CTkFont(size=9), text_color="#333333",
         ).pack()
 
-        # ── Right panel (normal CTkFrame, NOT scrollable) ───────────────
-        right = ctk.CTkFrame(self, fg_color="transparent")
+        # ── Right panel (scrollable so buttons stay visible) ───────────
+        right = ctk.CTkScrollableFrame(
+            self,
+            fg_color="transparent",
+            scrollbar_button_color="#2d2d2d",
+            scrollbar_button_hover_color="#3d3d3d",
+        )
         right.grid(row=0, column=1, sticky="nsew", padx=(12, 4), pady=8)
 
         # ── 1. Header ─────────────────────────────────────────────────
@@ -292,6 +297,8 @@ class InstallTab(ctk.CTkFrame):
             fg_color="#1a3a1a", hover_color="#2a5a2a",
             height=36, width=180, corner_radius=8,
         ).pack(side="left")
+
+        ctk.CTkFrame(right, fg_color="transparent", height=16).pack()
 
     # ------------------------------------------------------------------ #
     # Private helpers                                                       #
