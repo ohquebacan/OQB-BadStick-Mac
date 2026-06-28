@@ -63,12 +63,13 @@ class InstallTab(ctk.CTkFrame):
             "exit_when_done":   ctk.BooleanVar(value=False),
             "default_launcher": ctk.StringVar(value="aurora"),
         }
-        self._toggleable         = []
-        self._custom_launch_ini  = None
-        self._active_profile_key = None
-        self._profile_btns       = {}   # key -> (btn, base_c, act_c, base_b, act_b)
-        self._profile_callback   = None
-        self._on_change_cb       = None
+        self._toggleable           = []
+        self._custom_launch_ini    = None
+        self._active_profile_key   = None
+        self._profile_btns         = {}   # key -> (btn, base_c, act_c, base_b, act_b)
+        self._profile_callback     = None
+        self._on_change_cb         = None
+        self._launch_ini_only_cb   = None
         self._build()
         self.update_idletasks()
 
@@ -275,12 +276,22 @@ class InstallTab(ctk.CTkFrame):
             cb.grid(row=row, column=col, sticky="w", padx=(0, 20), pady=2)
             self._toggleable.append(cb)
 
+        btn_row = ctk.CTkFrame(right, fg_color="transparent")
+        btn_row.pack(anchor="w", pady=(8, 0))
+
         ctk.CTkButton(
-            right, text="Editor de Configuración  →",
+            btn_row, text="Editor de Configuración  →",
             command=self._open_config_editor,
             fg_color="#2d2d2d", hover_color="#3d3d3d",
             height=28, width=210, anchor="w",
-        ).pack(anchor="w", pady=(8, 0))
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkButton(
+            btn_row, text="📄 Solo launch.ini",
+            command=self._on_launch_ini_only,
+            fg_color="#1a3a1a", hover_color="#2a5a2a",
+            height=28, width=160,
+        ).pack(side="left")
 
     # ------------------------------------------------------------------ #
     # Private helpers                                                       #
@@ -332,6 +343,10 @@ class InstallTab(ctk.CTkFrame):
         device_manager = getattr(main_window, "device_manager", None)
         LaunchIniEditor(main_window, device_manager=device_manager)
 
+    def _on_launch_ini_only(self):
+        if self._launch_ini_only_cb:
+            self._launch_ini_only_cb()
+
     # ------------------------------------------------------------------ #
     # Public API                                                           #
     # ------------------------------------------------------------------ #
@@ -341,6 +356,9 @@ class InstallTab(ctk.CTkFrame):
 
     def set_change_callback(self, cb):
         self._on_change_cb = cb
+
+    def set_launch_ini_only_callback(self, cb):
+        self._launch_ini_only_cb = cb
 
     def set_active_profile(self, key):
         self._active_profile_key = key

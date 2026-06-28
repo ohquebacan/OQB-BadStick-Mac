@@ -16,7 +16,7 @@ from app.core.config import (
     APP_NAME, APP_VERSION, GITHUB_REPO, DISCORD_URL, TEMP_DIR,
     build_launch_ini, XEXMENU_CONTENT_PATH,
 )
-from app.core.device_manager import DeviceManager
+from app.core.device_manager import DeviceManager, scan_usb_installs
 from app.core.downloader import Downloader
 from app.core.installer import Installer
 from app.ui.tabs.install_tab import InstallTab
@@ -299,6 +299,7 @@ class MainWindow(ctk.CTk):
         ):
             tab.set_change_callback(self._on_manual_change)
         self.install_tab.set_profile_callback(self._on_profile_select)
+        self.install_tab.set_launch_ini_only_callback(self._generate_launch_ini_only)
         self._quick_profiles.apply("recommended")
 
     def _on_profile_select(self, profile: str):
@@ -1029,6 +1030,46 @@ class MainWindow(ctk.CTk):
                             "warning")
                     else:
                         log(f"  ℹ️  {entry['name']} → carpeta creada (instalación manual)")
+
+    def _generate_launch_ini_only(self):
+        """Escanea el USB actual y escribe solo launch.ini sin reinstalar nada."""
+        device = self._get_selected_device()
+        if not device:
+            self._log("⚠ Seleccioná un USB primero", "error")
+            return
+
+        usb_path = self._device_manager.get_mount_point(device["identifier"])
+        if not usb_path or not os.path.isdir(usb_path):
+            self._log("⚠ No se pudo determinar el mount point del USB", "error")
+            return
+
+        installed = scan_usb_installs(usb_path, CATALOG)
+        self._log(
+            f"📂 Detectado en USB: {', '.join(sorted(installed)) or 'nada'}"
+        )
+
+        opts = self.install_tab.get_options()
+        default_launcher = opts.get("default_launcher", "aurora")
+
+        if (default_launcher not in ("xexmenu", "official")
+                and default_launcher not in installed):
+            self._log(
+                f"  ⚠ '{default_launcher}' no encontrado en USB → fallback a official",
+                "warning",
+            )
+            default_launcher = "official"
+
+        ini_content = build_launch_ini(default_launcher, installed, CATALOG)
+        ini_path = os.path.join(usb_path, "launch.ini")
+        with open(ini_path, "w", encoding="utf-8", newline="\r\n") as f:
+            f.write(ini_content)
+
+        self._log(
+            f"✅ launch.ini generado — Default: {default_launcher} "
+            f"| {len(installed)} items detectados",
+            "success",
+        )
+        self._toggle_log()
 
     def _extract_zip_to(self, zip_path: str, dest_dir: str, log):
         """Deprecated shim — delegates to Installer.extract_zip_to."""

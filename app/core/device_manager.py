@@ -401,3 +401,22 @@ class DeviceManager:
                 return f"{size_bytes:.1f} {unit}"
             size_bytes /= 1024
         return f"{size_bytes:.1f} PB"
+
+
+def scan_usb_installs(usb_path: str, catalog: dict) -> set:
+    """Detecta qué items del catalog están instalados en el USB."""
+    installed = set()
+    for key, entry in catalog.items():
+        dest = entry.get("dest", "")
+        if not dest:
+            continue
+        full = os.path.join(usb_path, *dest.replace("\\", "/").split("/"))
+        try:
+            if os.path.isdir(full) and any(os.scandir(full)):
+                installed.add(key)
+        except PermissionError:
+            pass
+    xex_content = os.path.join(usb_path, "Content", "0000000000000000", "C0DE9999")
+    if os.path.isdir(xex_content):
+        installed.add("xexmenu")
+    return installed
